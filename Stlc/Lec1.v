@@ -254,10 +254,8 @@ Example demo_subst1:
 Proof.
 (* WORKED IN CLASS *)
   simpl.
-  destruct (Y==Y).
-  - auto.
-  - destruct n. auto.
-Qed. 
+  destruct (Y==Y). auto. contradiction.
+Qed.
 
 (** *** Exercise [subst_eq_var]
 
@@ -268,20 +266,36 @@ Qed.
 Lemma subst_eq_var: forall (x : var) u,
   [x ~> u](var_f x) = u.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros.
+  simpl.
+  destruct (x == x).
+  - auto. 
+  - contradiction.
+Qed.
 
 (** *** Exercise [subst_neq_var] *)
 
 Lemma subst_neq_var : forall (x y : var) u,
   y <> x -> [x ~> u](var_f y) = var_f y.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros. simpl.
+  destruct (y == x).
+  - contradiction.
+  - auto.
+Qed.
 
 (** *** Exercise [subst_same] *)
 
 Lemma subst_same : forall y e, [y ~> var_f y] e = e.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros.
+  induction e; simpl; auto.
+  - destruct (x == y).
+    + rewrite e. auto using subst_eq_var.
+    + auto using subst_neq_var.
+  - rewrite IHe. auto.
+  - rewrite IHe1, IHe2. auto.
+Qed.
 
 
 (*************************************************************************)
@@ -327,7 +341,19 @@ Qed.
 Lemma subst_exp_fresh_eq : forall (x : var) e u,
   x `notin` fv_exp e -> [x ~> u] e = e.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros.
+  induction e; simpl in *; auto.
+  - assert (x0 <> x). fsetdec.
+    destruct (x0 == x).
+    + contradiction.
+    + auto.
+  - apply IHe in H. f_equal. exact H.
+  - assert (H1 : x `notin` fv_exp e1). fsetdec.
+    assert (H2 : x `notin` fv_exp e2). fsetdec.
+    f_equal.
+    + apply IHe1. assumption.
+    + apply IHe2. assumption.
+Qed.
 
 (*************************************************************************)
 (** ** Additional Exercises                                              *)
@@ -380,7 +406,18 @@ forall u e x,
   x `notin` fv_exp e ->
   x `notin` fv_exp ([x ~> u] e).
 Proof.
- (* FILL IN HERE *) Admitted.
+  intros.
+  induction e; simpl in *.
+  - assumption.
+  - destruct (x0 == x).
+    + rewrite e in H. fsetdec.
+    + simpl. assumption.
+  - apply IHe. assumption.
+  - destruct_notin.
+    apply notin_union.
+    + apply IHe1. assumption.
+    + apply IHe2. assumption.
+Qed.
 
 (** *** Exercise [fv_exp_subst_exp_fresh] *)
 
@@ -389,7 +426,18 @@ forall e u x,
   x `notin` fv_exp e ->
   fv_exp ([x ~> u] e) [=] fv_exp e.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros.
+  induction e; simpl in *.
+  - fsetdec.
+  - destruct (x0 == x).
+    + rewrite e in H. fsetdec.
+    + simpl. fsetdec.
+  - apply IHe. assumption.
+  - destruct_notin.
+    apply IHe1 in H. rename H into H1.
+    apply IHe2 in NotInTac. rename NotInTac into H2.
+    fsetdec.
+Qed.
 
 (** *** Exercise [fv_exp_subst_exp_upper] *)
 
@@ -397,8 +445,12 @@ Lemma fv_exp_subst_exp_upper :
 forall e1 e2 x1,
   fv_exp (subst_exp e2 x1 e1) [<=] fv_exp e2 `union` remove x1 (fv_exp e1).
 Proof.
-  (* FILL IN HERE *) Admitted.
-
+  intros.
+  induction e1; simpl in *; try fsetdec.
+  - destruct (x == x1).
+    + fsetdec.
+    + simpl. fsetdec.
+Qed.
 
 (*************************************************************************)
 (*************************************************************************)
@@ -501,7 +553,10 @@ Lemma subst_var : forall (x y : var) u e,
   lc_exp u ->
   ([x ~> u] e) ^ y = [x ~> u] (e ^ y).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros.
+  rewrite subst_exp_open_exp_wrt_exp; auto.
+  rewrite subst_neq_var; auto.
+Qed.
 
 (** *** Exercise [subst_exp_intro] *)
 
@@ -521,9 +576,20 @@ Proof.
   intros x u e FV_EXP.
   unfold open.
   generalize 0.
-  induction e; intro n0; simpl.
-  (* FILL IN HERE *) Admitted.
-
+  induction e; intro n0; simpl in *.
+  - destruct (lt_eq_lt_dec n n0).
+    + destruct s.
+      { auto. }
+      { simpl. destruct (x == x). auto. contradiction. }
+    + auto.
+  - destruct (x0 == x).
+    + simpl in FV_EXP. fsetdec.
+    + auto.
+  - eapply IHe in FV_EXP. rewrite FV_EXP. auto.
+  - destruct_notin.
+    rename FV_EXP into H1. rename NotInTac into H2.
+    f_equal; eauto.
+Qed.
 
 (** *** Exercise [fv_exp_open_exp_wrt_exp_upper] *)
 
@@ -540,7 +606,17 @@ Lemma fv_exp_open_exp_wrt_exp_upper :
 forall e1 e2,
   fv_exp (open_exp_wrt_exp e1 e2) [<=] fv_exp e2 `union` fv_exp e1.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros.
+  unfold open.
+  generalize 0.
+  induction e1; intro n0; simpl in *.
+  - destruct (lt_eq_lt_dec n n0);
+      try (destruct s); simpl; fsetdec.
+  - fsetdec.
+  - eauto.
+  - specialize (IHe1_1 n0). specialize (IHe1_2 n0).
+    fsetdec.
+Qed.
 
 (*************************************************************************)
 (** ** Forall quantification in [lc_exp].                                *)
@@ -668,7 +744,16 @@ Proof. intros e1 e2 H. induction H; auto. Qed.
 Lemma typing_to_lc_exp : forall E e T,
   typing E e T -> lc_exp e.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros.
+  induction H.
+  - auto.
+  - pick fresh x for L.
+    specialize (H0 x). apply H0 in Fr.
+    apply (lc_abs_exists x). assumption.
+  - constructor.
+    + assumption.
+    + assumption.
+Qed.
 
 (** *** Exercise [step_lc_exp2]
 
@@ -678,4 +763,12 @@ Proof.
 
 Lemma step_lc_exp2 : forall e1 e2, step e1 e2 -> lc_exp e2.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros.
+  induction H.
+  - pick fresh x for (fv_exp e1).
+    rewrite (subst_exp_intro x); auto.
+    inversion H.
+    specialize (H2 x).
+    apply subst_exp_lc_exp; assumption.
+  - constructor; assumption.
+Qed.
